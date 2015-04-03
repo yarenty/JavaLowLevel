@@ -1,3 +1,4 @@
+package com.yarenty.arrays;
 
 public class TwoDimArray {
 
