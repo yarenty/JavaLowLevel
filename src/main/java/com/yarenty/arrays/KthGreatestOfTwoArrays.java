@@ -14,23 +14,6 @@ import java.util.TreeSet;
  */
 public class KthGreatestOfTwoArrays {
 
-    public static void main(final String[] args) {
-        final Integer l1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-        final Integer l2[] = {3, 7, 8, 10, 11, 12, 13};
-
-        final int k = 6;
-
-        int out;
-        out = usingLists(l1, l2, k);
-        System.out.println("LIST:  " + k + "-th greatest element from top backward is " + out);
-        out = superSpeed(l1, l2, k);
-        System.out.println("SuperSpeed " + k + "-th greatest element from top backward is " + out);
-        out = usingSet(l1, l2, k);
-        System.out.println("SET  " + k + "-th greatest element from top backward is " + out);
-
-
-    }
-
     /**
      * Super speed - traversing through 2 arrays in same time.
      *
@@ -92,4 +75,67 @@ public class KthGreatestOfTwoArrays {
         return ts.last();
     }
 
+
+    /**
+     * PERFORMANCE TEST:
+     * <p/>
+     * ____10 elements:  LIST  gets    21,532ns while SuperSpeed get     1,844ns
+     * ___100 elements:  LIST  gets    74,600ns while SuperSpeed get    2,2925ns
+     * __1000 elements:  LIST  gets   358,502ns while SuperSpeed get   185,474ns
+     * _10000 elements:  LIST  gets   489,212ns while SuperSpeed get   732,141ns
+     * 100000 elements:  LIST  gets 2,530,297ns while SuperSpeed get 7,727,587ns
+     *
+     * @param size
+     */
+    private static void performanceTest(final int size) {
+        final ArrayList<Integer> l1 = new ArrayList<>(size + 1);
+        final ArrayList<Integer> l2 = new ArrayList<>(size + 1);
+
+        for (int i = 0; i < size; i++) {
+            l1.add((int) (Math.random() * 100));
+            l2.add((int) (Math.random() * 100));
+        }
+
+        Collections.sort(l1);
+        Collections.sort(l2);
+
+        final Integer[] l1arr = new Integer[size];
+        final Integer[] l2arr = new Integer[size];
+
+        for (int i = 0; i < size; i++) {
+            l1arr[i] = l1.get(i);
+            l2arr[i] = l2.get(i);
+        }
+
+
+        final long tl_start = System.nanoTime();
+        usingLists(l1arr, l2arr, size);
+        final long tl_end = System.nanoTime();
+
+        final long tp_start = System.nanoTime();
+        superSpeed(l1arr, l2arr, size);
+        final long tp_end = System.nanoTime();
+
+
+        System.out.println(size + " elements:  LIST  gets " + (tl_end - tl_start) + "ns while SuperSpeed get " + (tp_end - tp_start) + "ns");
+    }
+
+    public static void main(final String[] args) {
+        final Integer l1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        final Integer l2[] = {3, 7, 8, 10, 11, 12, 13};
+
+        final int k = 6;
+
+        int out;
+        out = usingLists(l1, l2, k);
+        System.out.println("LIST:  " + k + "-th greatest element from top backward is " + out);
+        out = superSpeed(l1, l2, k);
+        System.out.println("SuperSpeed " + k + "-th greatest element from top backward is " + out);
+        out = usingSet(l1, l2, k);
+        System.out.println("SET  " + k + "-th greatest element from top backward is " + out);
+
+        final int size = 10;
+        System.out.println("PERFORMANCE TEST");
+        performanceTest(size);
+    }
 }
