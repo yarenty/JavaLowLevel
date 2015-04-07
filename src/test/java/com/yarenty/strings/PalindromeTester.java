@@ -1,5 +1,6 @@
 package com.yarenty.strings;
 
+
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -16,8 +17,8 @@ public class PalindromeTester {
     public boolean palindromeReverseTest(String s) {
 
         String s1 = reverse(s);
-        System.out.println("s:[" + s + "]");
-        System.out.println("s1:[" + s1 + "]");
+        System.out.println("s:["+s+"]");
+        System.out.println("s1:["+s1+"]");
         return s.equals(s1);
     }
 
@@ -27,10 +28,10 @@ public class PalindromeTester {
      * @return reverse string
      */
     public String reverse(String s) {
-        String s1 = "";
+        String s1="";
 
-        for (int i = s.length() - 1; i >= 0; i--) {
-            s1 += s.charAt(i);
+        for(int i=s.length()-1; i>=0; i--){
+            s1+=s.charAt(i);
         }
         return s1;
     }
@@ -38,8 +39,8 @@ public class PalindromeTester {
 
     public boolean palindromeTest(String s) {
 
-        for (int i = 0; i < s.length() / 2; i++) {
-            if (s.charAt(i) != s.charAt(s.length() - i - 1)) return false;
+        for(int i=0; i<s.length()/2; i++){
+            if (s.charAt(i) != s.charAt(s.length()-i-1)) return false;
         }
         return true;
     }
@@ -47,13 +48,13 @@ public class PalindromeTester {
 
     public boolean palindromeTestNoSpace(String s) {
 
-        int index = s.length() - 1;
+        int index = s.length()-1;
         char space = ' ';
-        int i = -1;
-        while (index > i) {
+        int i=-1;
+        while ( index > i ) {
             i++;
             if (s.charAt(i) == space) continue;
-            while (s.charAt(index) == space) {
+            while (s.charAt(index)==space) {
                 index--;
             }
             if (s.charAt(i) != s.charAt(index)) return false;
@@ -63,8 +64,9 @@ public class PalindromeTester {
     }
 
 
+
     @Test
-    public void testPalindromeReverse() {
+    public void testPalindromeReverse(){
         assertEquals(true, palindromeReverseTest(s));
         assertEquals(true, palindromeReverseTest(s2));
         assertEquals(false, palindromeReverseTest(s3));
@@ -73,7 +75,7 @@ public class PalindromeTester {
 
 
     @Test
-    public void testPalindrome() {
+    public void testPalindrome(){
         assertEquals(true, palindromeTest(s));
         assertEquals(true, palindromeTest(s2));
         assertEquals(false, palindromeTest(s3));
@@ -82,7 +84,7 @@ public class PalindromeTester {
 
 
     @Test
-    public void testPalindromeNoSpace() {
+    public void testPalindromeNoSpace(){
         assertEquals(true, palindromeTestNoSpace(s));
         assertEquals(true, palindromeTestNoSpace(s2));
         assertEquals(true, palindromeTestNoSpace(s3));
