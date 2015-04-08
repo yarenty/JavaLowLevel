@@ -1,53 +1,55 @@
 package com.yarenty.list;
 
 
-import java.io.*;
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
 
 /**
- * Singly linked implementation of the {@link List} interface.
+ * <b>TASK: Implement a simple singly-linked list, and two functions to reverse
+ * the order of the list.<br/>
+ * You must provide:<br/>
+ * 1. An iterative reverse operation.<br/>
+ * 2. A recursive reverse operation.<br/>
+ * 3. Full coverage automated tests.<br/>
+ * <br/>
+ * </b>
  * <p/>
- * Due to its singly linked nature, only forward iteration operations are
- * supported. Iterators produced by {@link #listIterator()} and
- * {@link #listIterator(int)} methods will throw
- * {@link UnsupportedOperationException} if backward traversal methods
- * {@link ListIterator#hasPrevious()} or {@link ListIterator#previous()} are
- * invoked.
+ * I choose to use <b>{@link AbstractSequentialList}</b>. From "
+ * {@link <a href="http://docs.oracle.com/javase/6/docs/api/java/util/AbstractSequentialList.html">oracle web site </a>}
+ * ":<br/>
+ * <i> AbstractSequentialList provides a skeletal implementation of the List
+ * interface to minimize the effort required to implement this interface backed
+ * by a "sequential access" data store (such as a linked list). [...]</i><br/>
+ * <p/>
+ * This is singly linked list so only forward iteration operations are
+ * supported. Methods {@link ListIterator#hasPrevious()} or
+ * {@link ListIterator#previous()} will finish with
+ * {@link UnsupportedOperationException}.
  * <p/>
  * The singly linked list implements {@link RandomAccess} to prevent various
- * {@link Collections} methods from invoking the above two methods. Thus the
- * {@link Collections} methods remain operational at the expense of
- * computation time, as indexing operations {@link #get(int)} and
- * {@link #set(int, Object)} always traverse from the beginning the list and
- * consume linear time. Therefore it is better to use implementation's
- * custom methods like {@link #reverse()} or {@link #sort()} instead of
- * {@link Collections#reverse(List)} and {@link Collections#sort(List)}.
+ * {@link Collections} methods from invoking the above two methods.
  * <p/>
- * Permits {@code null} elements.
- * <p/>
- * Iterators and sub-lists returned by {@link #iterator()},
- * {@link #listIterator()} and {@link #subList(int, int)} methods are
- * <i>fail-fast</i>: if the list is structurally modified at any time after the
- * iterator or the sub-list is created, in any way except through the iterator's
- * or sub-list's own {@code remove} or {@code add} methods, the
- * iterator/sub-list will throw a {@link ConcurrentModificationException}. Thus,
- * in case of a concurrent modification performed in the same thread, the
- * iterator/sub-list will fail quickly and cleanly, preserving class invariants.
- * <p/>
- * The class is thread unsafe. The class invariants and fail-fast behavior of
- * iterator/sub-list cannot be guaranteed in case of a multithreaded concurrent
- * modification. Use the synchronised wrapper
- * {@link Collections#synchronizedList(List)} to achieve thread safety.
+ * Therefore are 3 reverse methods available:<br/>
+ * {@link #reverse()} - iterative reverse (quickest)<br/>
+ * {@link #reverseRecursive()} - recursive reverse, could raise StavkOverflow
+ * when list is too big<br/>
+ * {@link Collections#reverse(List)} - standard collections reverse<br/>
  *
  * @param <E> the type of the elements held in the list.
- * @author alexander.georgiev@gmail.com
+ * @author yarenty@gmail.com
+ * @see {http://docs.oracle.com/javase/6/docs/api/java/util/AbstractSequentialList.html}
  */
-public final class SinglyLinkedList<E> extends AbstractSequentialList<E> implements Cloneable, Serializable, RandomAccess {
+public final class SinglyLinkedList<E> extends AbstractSequentialList<E>
+        implements RandomAccess, Cloneable, Serializable {
 
-    private static final long serialVersionUID = 1L;
-
+    /**
+     * Implementation of node.
+     *
+     * @param <T>
+     * @author yarenty
+     */
     private static class Node<T> {
         T e;
         Node<T> next;
@@ -56,112 +58,31 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
             this.e = e;
             this.next = next;
         }
-
-        @Override
-        public String toString() { // to facilitate debugging
-            return e + " -> " + (next == null ? "next is null" : next.e);
-        }
     }
 
-    transient private int modCount = 0; // to intercept concurrent modifications
     transient private int size = 0;
-    transient private final Node<E> head; // points to the first element in the list
-    transient private final Node<E> end;  // List's last element always points to 'end'.
-    // As the same implementation is used to implement sublists a
-    // sentinel reference to hold the end of the list is required
-    // thus inserting at the end of the sublist will also modify
-    // accordingly the parent list.
-
-    transient private final Node<E> tail; // points to the last element in the list to speed up operation "append"
-    transient private SinglyLinkedList<E> parent = this; // if this is a sublist, keeps a reference to the parent list
-
-    private Node<E> begin() {
-        return head.next;
-    } // stl style accessors
-
-    private Node<E> end() {
-        return end;
-    }
-
 
     /**
-     * To be used in unit tests - verifies the class' invariants:
-     * <p/>
-     * <li>calculated size == number of elements
-     * <li>head -> first
-     * <li>tail -> last <==> tail.next.next == end
-     * <li>head->end - starting from head one can reach end and the number of nodes
-     * between is equal to the <tt>expectedSize</tt>
-     *
-     * @param expectedSize expected size of the list to be compared with the real size of the list
-     * @throws IllegalStateException    if any invariant is violated
-     * @throws IllegalArgumentException if <tt>expectedSize</tt> is less than zero.
+     * Pointer to first node.
      */
-    void checkInvariants(final int expectedSize) {
-        if (expectedSize < 0) throw new IllegalArgumentException();
-        if (parent != this)
-            parent.checkInvariants(parent.size()); // better than nothing
-        //
-        checkForComodification();
-        t(size == expectedSize);
-        //
-        final boolean empty = (begin() == end() & isEmpty());
-        t(size == 0 ? empty : !empty);
-        //
-        t(tail.next.next == end());
-        // count the nodes between begin() and end()
-        int nNodes = 0;
-        Node<E> c = head;
-        while (tail.next != c) {
-            ++nNodes;
-            c = c.next;
-            t(nNodes <= size); // looping should traverse no more than size() - 1 elements
-        }
-        t(c.next == end);
-        t(nNodes == size);
-    }
+    transient Node<E> first;
 
-    // everybody up the chain should have the same modifications count
-    private void checkForComodification() {
-        if (parent != this) {
-            parent.checkForComodification();
-            if (parent.modCount != modCount) {
-                throw new ConcurrentModificationException(
-                        "sublist has a different modcount " + modCount
-                                + " from parent: " + parent.modCount
-                );
-            }
-        }
-    }
-
-    private void incrementModCount() {
-        ++modCount;
-        if (parent != this)
-            parent.incrementModCount();
-    }
-
-    private void changeSize(final int with) {
-        size += with;
-        if (parent != this)
-            parent.changeSize(with);
-    }
 
     /**
-     * Creates an empty list
+     * Pointer to the last element in the list to speed up operation "append"
+     */
+    private Node<E> tail;
+
+    /**
+     * Empty list - initialize to speed up add operations.
      */
     public SinglyLinkedList() {
-        head = new Node<E>(null, null);
-        tail = new Node<E>(null, null);
-        end = head;
-        head.next = end;  // because begin() always points to the first and when list is empty begin() == end()
-        tail.next = head; // because teail.next == last() is always the node before the "end"
-        size = 0;
     }
 
     /**
      * Creates a list populated with elements.
      *
-     * @param elements to populate with
+     * @param elements
      */
     public SinglyLinkedList(final E... elements) {
         this();
@@ -170,9 +91,8 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
     }
 
     /**
-     * Constructs a list containing the elements of the specified
-     * collection, in the order they are returned by the collection's
-     * iterator.
+     * Constructs a list containing the elements of the specified collection, in
+     * the order they are returned by the collection's iterator.
      *
      * @param c the collection whose elements are to be placed into this list
      * @throws NullPointerException if the specified collection is null
@@ -180,6 +100,183 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
     public SinglyLinkedList(final Collection<? extends E> c) {
         this();
         addAll(c);
+    }
+
+    /**
+     * Returns the number of elements in this list.
+     *
+     * @return the number of elements in this list
+     */
+    @Override
+    public int size() {
+        return size;
+    }
+
+    /**
+     * Removes all of the elements from this list. The list will be empty after
+     * this call returns.
+     */
+    @Override
+    public void clear() {
+        for (final Iterator<E> i = iterator(); i.hasNext(); i.remove()) {
+            i.next();
+        }
+    }
+
+    /**
+     * The only method that directly changes the structure adding an element
+     *
+     * @param after the node to insert after, assumption is that this is a valid
+     *              node from the list in the range [head, last]
+     * @param value the value to store
+     * @return reference to the added element
+     */
+    private Node<E> addNode(Node<E> after, final E value) {
+        Node<E> n;
+
+        if (after == null) { //first node
+            n = new Node<E>(value, first);
+
+            if (first == null) {
+                tail = n;
+            }
+            first = n;
+
+        } else {
+            n = new Node<E>(value, after.next);
+            after.next = n;
+            if (n.next == null) // is "n" the new last node?
+                tail = n; // tail is not a proper element of the list and must
+            // be manually updated
+        }
+
+        size++;
+        modCount++;
+        return n;
+    }
+
+    /**
+     * The method that directly changes the structure to remove an element
+     *
+     * @param after the node whose next is to be detached from the list and
+     *              nullified, assumption is that {@code after} is a valid node in
+     *              the range [ head, last )
+     */
+    private E removeNode(Node<E> after) {
+
+        E toBeReturned = null;
+
+        if (after.next != null) {
+            final Node<E> removed = after.next;
+            after.next = removed.next;
+            removed.next = null;
+            toBeReturned = removed.e;
+            removed.e = null;
+            // is after node the new last node?
+            if (after.next == null)
+                tail.next = after;
+            //
+        } else {
+            toBeReturned = after.e;
+            after = null;
+            tail = null;
+        }
+
+        size--;
+        modCount++;
+        return toBeReturned;
+    }
+
+    /**
+     * Appends the argument to the end of the list.
+     *
+     * @param e the element to append, can be {@code null}
+     * @return {@code true}
+     */
+    @Override
+    public boolean add(final E e) {
+        return addNode(tail, e) != null;
+    }
+
+    /**
+     * Inserts the specified element at the specified position in the list.
+     *
+     * @param index the position to insert at.
+     * @param value the element to insert, can be {@code null}
+     * @throws IndexOutOfBoundsException {@inheritDoc}
+     */
+    @Override
+    public void add(final int index, final E value) {
+        if (checkRange(index, size()) == size()) {
+            addNode(tail, value);
+        } else {
+            if (index == 0) {
+                addNode(null, value);
+            } else {
+                addNode(findNodeBefore(first, index), value);
+            }
+        }
+    }
+
+    private boolean insertAllAfter(final Node<E> insertAfter,
+                                   final Collection<? extends E> c) {
+        Node<E> n = insertAfter;
+        for (final E e : c) {
+            n = addNode(n, e);
+        }
+        if (n != insertAfter)
+            modCount++;
+        return (n != insertAfter);
+    }
+
+    /**
+     * Appends all of the elements in the specified collection to the end of
+     * this list, in the order that they are returned by the specified
+     * collection's iterator. The behavior of this operation is undefined if the
+     * specified collection is modified while the operation is in progress.
+     * (Note that this will occur if the specified collection is this list, and
+     * it's nonempty.)
+     *
+     * @param c collection containing elements to be added to this list
+     * @return {@code true} if this list changed as a result of the call
+     * @throws NullPointerException if the specified collection is null
+     */
+    @Override
+    public boolean addAll(final Collection<? extends E> c) {
+        return insertAllAfter(tail, c);
+    }
+
+    /**
+     * Inserts all of the elements in the specified collection into this list,
+     * starting at the specified position. Shifts the element currently at that
+     * position (if any) and any subsequent elements to the right (increases
+     * their indices). The new elements will appear in the list in the order
+     * that they are returned by the specified collection's iterator.
+     *
+     * @param index index at which to insert the first element from the specified
+     *              collection
+     * @param c     collection containing elements to be added to this list
+     * @return {@code true} if this list changed as a result of the call
+     * @throws IndexOutOfBoundsException {@inheritDoc}
+     */
+    @Override
+    public boolean addAll(final int index, final Collection<? extends E> c) {
+        checkRange(index, size());
+        final Node n = (index == 0) ? null : findNodeBefore(first, index);
+        return insertAllAfter(n, c);
+    }
+
+    /**
+     * Removes the element at the specified position in this list and returns
+     * the element that was removed from the list.
+     *
+     * @param index {@inheritDoc}
+     * @throws IndexOutOfBoundsException {@inheritDoc}
+     */
+    @Override
+    public E remove(final int index) {
+        checkRange(index, size() - 1);
+        return removeNode(findNodeBefore(first, index));
     }
 
     /**
@@ -194,133 +291,73 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
     }
 
     /**
-     * A Serialisation Proxy class to override the default Java serialisation
-     * mechanism for the singly-linked list.
-     * <p/>
-     * Because the business fields {@code head, tail} and {@code end} are final,
-     * they cannot be re-initialised in a
-     * {@link SinglyLinkedList#readObject(ObjectInputStream)} method and values
-     * deserialised by the default Java serialisation mechanism will be used.
-     * From security point of view such values cannot be trusted, the remedy
-     * is to use the {@code Serialisation Proxy} prescription taken from
-     * {@code Effective Java second edition}.
-     */
-    private static class SerializationProxy<T> implements Serializable {
-        private static final long serialVersionUID = 1L;
-        private transient SinglyLinkedList<T> list;
-
-        public SerializationProxy(SinglyLinkedList<T> lst) {
-            this.list = lst;
-        }
-
-        private void writeObject(ObjectOutputStream oos) throws IOException {
-            oos.defaultWriteObject();
-            oos.writeInt(list.size());
-            for (Object o : list)
-                oos.writeObject(o);
-        }
-
-        private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
-            ois.defaultReadObject();
-            final int size = ois.readInt();
-            if (size < 0) {
-                throw new InvalidObjectException(
-                        "A serialised SingleLinkedList with negative size: " + size
-                );
-            }
-            list = new SinglyLinkedList<T>();
-            for (int i = 0; i < size; ++i)
-                append(list, ois.readObject());
-        }
-
-        @SuppressWarnings("unchecked")
-        private <S> void append(List<S> lst, Object o) {
-            lst.add((S) o);
-        }
-
-        private Object readResolve() {
-            return this.list;
-        }
-    }
-
-    private Object writeReplace() {
-        return new SerializationProxy<E>(this);
-    }
-
-    private void readObject(final ObjectInputStream ois) throws InvalidObjectException {
-        throw new InvalidObjectException("use the proxy, dear");
-    }
-
-    /**
-     * Removes all of the elements from this list. The list will be empty after this call returns.
-     */
-    @Override
-    public void clear() {
-        for (final Iterator<E> i = iterator(); i.hasNext(); i.remove()) {
-            i.next();
-        }
-    }
-
-    /**
-     * The only method that directly changes the structure adding an element
-     *
-     * @param after the node to insert after, assumption is that this is a valid node
-     *              from the list in the range [head, last]
-     * @param value the value to store
-     * @return reference to the added element
-     */
-    private Node<E> addNodeAfter(final Node<E> after, final E value) {
-        final Node<E> n = new Node<E>(value, after.next);
-        after.next = n;
-        if (n.next == end()) // is "n" the new last node?
-            tail.next = n; // tail is not a proper element of the list
-        changeSize(+1);    // and must be manually updated
-        incrementModCount();
-        return n;
-    }
-
-    /**
-     * The method that directly changes the structure to remove an element
-     *
-     * @param after the node whose next is to be detached from the list and nullified,
-     *              assumption is that {@code after} is a valid node in the range [ head, last )
-     */
-    private E removeTheNodeAfter(final Node<E> after) {
-        final Node<E> removed = after.next;
-        after.next = removed.next;
-        removed.next = null;
-        final E toBeReturned = removed.e;
-        removed.e = null;
-        // is after node the new last node?
-        if (after.next == end())
-            tail.next = after;
-        //
-        changeSize(-1);
-        incrementModCount();
-        return toBeReturned;
-    }
-
-    /**
-     * Reverses the order of the elements in the list, runs in linear time.
+     * Iterative approach. Reverses the order of the elements in the list, runs
+     * in linear time.
      *
      * @return {@code this} for chaining
      */
     public SinglyLinkedList<E> reverse() {
         if (size() > 1) {
-            checkForComodification();
-            for (Node<E> current = begin(), previous = end(); current != end(); ) {
+            for (Node<E> current = first, previous = null; current != null; ) {
                 final Node<E> next = current.next;
                 current.next = previous;
                 previous = current;
                 current = next;
             }
-            final Node<E> oldBegin = head.next;
-            head.next = tail.next;
-            tail.next = oldBegin;
-            incrementModCount();
+            final Node<E> begin = first;
+            first = tail.next;
+            tail.next = begin;
+            modCount++;
         }
         return this;
     }
+
+    private void recursion(Node<E> current, final Node<E> start) {
+        if (current.next == null) {
+            return;
+        }
+
+        final Node<E> temp = current.next;
+        current = current.next;
+        temp.next = start;
+
+        recursion(current, temp);
+    }
+
+    /**
+     * Recursive approach <br/>
+     * <p/>
+     * Algorithm:<br/>
+     * - in first iteration first node will be replaced with his next one <br/>
+     * - to next iteration I will send first node - which now is pointing to
+     * next.next element and start node in list - which now will be second one<br/>
+     * - next iteration will start with updated position to first node<br/>
+     * Best visibility will give that picture: <br/>
+     * <p/>
+     * <code><pre>
+     *            a-&gt;b-&gt;c-&gt;d-&gt;
+     *         b-&gt;a-&gt;c-&gt;d-&gt;
+     *      c-&gt;b-&gt;a-&gt;d-&gt;
+     *   d-&gt;c-&gt;b-&gt;a-&gt;
+     * </pre></code> Where:<br/>
+     * current is always pointing to the "a" node <br/>
+     * start is always pointing to first node in list ("a", then "b" then "c"
+     * ...) <br/>
+     *
+     * @return reversed list
+     */
+    public SinglyLinkedList<E> reverseRecursive() {
+        if (size() > 1) {
+            final Node<E> oldBegin = first;
+            recursion(first, first);
+            first = tail;
+            tail = oldBegin;
+
+            modCount++;
+        }
+        return this;
+    }
+
 
     /**
      * Sorts the list according to their natural order, using
@@ -355,12 +392,10 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
      */
     //@Override
     public void sort(final Comparator<? super E> compir) {
-        checkForComodification();
-        mergeSort(this.head, this.tail, size(), compir);
-        incrementModCount();
+        mergeSort(this.first, this.tail, size(), compir);
     }
 
-    static private <T>
+    private <T>
     void mergeSort(final Node<T> h, final Node<T> t, final int len, final Comparator<? super T> comp) {
         if (len > 1) {
             final int m = len >>> 1;
@@ -379,7 +414,7 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
     // as during merging, the first element of the second list (the end() of the first list)
     // can be merged somewhere into the first list, thus destroying the sentinel invariant
     // To avoid this the lists must be designated as [head, tail] rather than [head, end)
-    static private <T>
+    private <T>
     void merge( Node<T> h1, final Node<T> t1, final Node<T> h2, final Node<T> t2, final Comparator<? super T> comp) {
         for (; t1.next != h1 && t2.next != h2; h1 = h1.next) {
             if (comp.compare(h1.next.e, h2.next.e) > 0) { // insert at found position
@@ -402,15 +437,13 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
      */
     @SuppressWarnings("serial")
     public SinglyLinkedList<E> parallelSort(final ForkJoinPool pooly, final Comparator<E> compir) {
-        checkForComodification();
         final int threshold = 1 + size() / (8 * Runtime.getRuntime().availableProcessors());
         pooly.invoke(new RecursiveAction() {
             @Override
             protected void compute() {
-                doParallelSort(head, tail, size(), compir, Math.max(threshold, 256), pooly);
+                doParallelSort(first, tail, size(), compir, Math.max(threshold, 256), pooly);
             }
         });
-        incrementModCount();
         return this;
     }
 
@@ -461,7 +494,7 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
     }
 
     @SuppressWarnings("serial")
-    private static <T> void doParallelSort(final Node<T> h, final Node<T> t, final int len
+    private <T> void doParallelSort(final Node<T> h, final Node<T> t, final int len
             , final Comparator<T> comp, final int THRESHOLD
             , final ForkJoinPool pooly) {
         if (len < THRESHOLD) {
@@ -502,136 +535,76 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
         }
     }
 
-    /**
-     * Appends the argument to the end of the list.
-     *
-     * @param e the element to append, can be {@code null}
-     * @return {@code true}
-     */
-    @Override
-    public boolean add(final E e) {
-        checkForComodification();
-        return addNodeAfter(tail.next, e) != null;
-    }
-
-    /**
-     * Inserts the specified element at the specified position in the list.
-     *
-     * @param index the position to insert at.
-     * @param value the element to insert, can be {@code null}
-     * @throws IndexOutOfBoundsException {@inheritDoc}
-     */
-    @Override
-    public void add(final int index, final E value) {
-        if (checkRange(index, size()) == size()) {
-            add(value); // speedy appending, will check for co-modification
-        } else {
-            checkForComodification();
-            addNodeAfter(findNodeBefore(head, index), value);
-        }
-    }
-
-    @Override
-    public boolean addAll(final Collection<? extends E> c) {
-        return insertAllAfter(tail.next, c);
-    }
-
-    // to remove this one - I need a InnerIterator.add(E e) implemented
-    @Override
-    public boolean addAll(final int index, final Collection<? extends E> c) {
-        checkRange(index, size());
-        return insertAllAfter(findNodeBefore(head, index), c);
-    }
-
-    private boolean insertAllAfter(final Node<E> insertAfter, final Collection<? extends E> c) {
-        checkForComodification();
-        Node<E> n = insertAfter;
-        for (final E e : c) {
-            n = addNodeAfter(n, e);
-        }
-        if (n != insertAfter)
-            incrementModCount();
-        return (n != insertAfter);
-    }
-
-    /**
-     * Removes the element at the specified position in this list and returns
-     * the element that was removed from the list.
-     *
-     * @param index {@inheritDoc}
-     * @throws IndexOutOfBoundsException {@inheritDoc}
-     */
-    @Override
-    public E remove(final int index) {
-        checkRange(index, size() - 1);
-        checkForComodification();
-        return removeTheNodeAfter(findNodeBefore(head, index));
-    }
 
     /**
      * Returns a forward only implementation of {@link ListIterator} over the
      * elements in this list.
      * <p/>
-     * This implementation does not support backward traversal methods
-     * {@link ListIterator#previous previous} and {@link ListIterator#hasPrevious()}
+     * This implementation does not support methods
+     * {@link ListIterator#previous previous} and
+     * {@link ListIterator#hasPrevious()}
      *
      * @return {@inheritDoc}
      */
     @Override
-    public ListIterator<E> listIterator() {
-        return new ForwardOnlyIterator(0);
+    public final ListIterator<E> listIterator() {
+        return new SinglyLinkedListIterator(0);
+    }
+
+    @Override
+    public final Iterator<E> iterator() {
+        return new SinglyLinkedListIterator(0);
     }
 
     /**
      * Returns a forward only implementation of {@link ListIterator} over the
      * elements in this list, starting at the specified position in this list.
-     * The specified index indicates the first element that would be
-     * returned by an call to {@link ListIterator#next next}.
+     * The specified index indicates the first element that would be returned by
+     * an call to {@link ListIterator#next next}.
      * <p/>
-     * This implementation does not support the backwards traversal methods
-     * {@link ListIterator#previous previous} and {@link ListIterator#hasPrevious()}
+     * This implementation does not support methods
+     * {@link ListIterator#previous previous} and
+     * {@link ListIterator#hasPrevious()}
      *
-     * @param fromIndex index of first element to be returned from the
-     *                  list iterator (by a call to the {@link ListIterator#next()} method)
-     * @return a forward only list iterator of the elements in this list (in proper
-     * sequence), starting at the specified position in this list
+     * @param fromIndex index of first element to be returned from the list iterator
+     *                  (by a call to the {@link ListIterator#next()} method)
+     * @return a forward only list iterator of the elements in this list (in
+     * proper sequence), starting at the specified position in this list
      * @throws IndexOutOfBoundsException if the index is out of range
      *                                   {@code (index < 0 || index > size())}
      */
     @Override
-    public ListIterator<E> listIterator(final int fromIndex) {
-        return new ForwardOnlyIterator(fromIndex);
+    public final ListIterator<E> listIterator(final int fromIndex) {
+        return new SinglyLinkedListIterator(fromIndex);
     }
 
     /**
      * implements just the minimum set of forward iteration methods
      */
-    final class ForwardOnlyIterator implements ListIterator<E> {
+    final class SinglyLinkedListIterator implements ListIterator<E> {
 
-        Node<E> previous = head; // previous is used for to enable removal of node pointed bu current
-        Node<E> current = head; // current == previous means next() has not been invoked
+        Node<E> previous = first; // previous is used for to enable removal of
+        // node pointed by current
+        Node<E> current = first; // current == previous means next() has not
+        // been invoked
         int expectedModCount = modCount;
         int nextIndex = 0;
 
-        ForwardOnlyIterator(int fromIndex) {
+        SinglyLinkedListIterator(int fromIndex) {
             checkRange(fromIndex, size());
             for (int i = 0; i < fromIndex; ++i)
                 next();
         }
 
         void checkForComodification() {
-            SinglyLinkedList.this.checkForComodification(); // make sure parent and grandparents
-            if (expectedModCount != modCount) {              // are Ok with this modification too
-                throw new ConcurrentModificationException(
-                        "iterator has a different modcount " + expectedModCount
-                                + " from parent: " + parent.modCount
-                );
+            if (expectedModCount != modCount) {
+                throw new ConcurrentModificationException();
             }
         }
 
-        //@Override public boolean hasNext() { return current.next != end(); }
         @Override
         public boolean hasNext() {
+            checkForComodification();
             return nextIndex != size();
         }
 
@@ -653,34 +626,33 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
             checkForComodification();
             if (current == previous)
                 throw new IllegalStateException("invoke next() before remove()");
-            removeTheNodeAfter(previous);
-            // effectively after the removal the cursor shifts back to the previous element
+            removeNode(previous);
             current = previous;
-            --nextIndex;
-            ++expectedModCount;
+            nextIndex--;
+            expectedModCount++;
         }
 
         @Override
         public void add(E e) {
             checkForComodification();
-            addNodeAfter(current, e);
+            addNode(current, e);
             previous = current;
             current = current.next;
-            ++nextIndex; //increment because the number of elements before the next element has just increased
-            ++expectedModCount;
+            nextIndex++;
+            expectedModCount++;
         }
 
         @Override
         public E next() {
             checkForComodification();
             if (nextIndex == size) {
-                throw new NoSuchElementException("list size: " + size
-                        + " currentindex = " + nextIndex);
+                throw new NoSuchElementException();
             }
+
             previous = current;
             current = current.next;
-            ++nextIndex;
-            return current.e;
+            nextIndex++;
+            return previous.e;
         }
 
         @Override
@@ -696,7 +668,8 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
         /**
          * {@inheritDoc}
          * <p/>
-         * Required by the implementation of {@link AbstractList#indexOf(Object)}
+         * Required by the implementation of
+         * {@link AbstractList#indexOf(Object)}
          *
          * @return {@inheritDoc}
          */
@@ -705,6 +678,7 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
             return nextIndex - 1;
         }
     }
+
 
     /**
      * Returns a view of the portion of this list between the specified
@@ -744,69 +718,105 @@ public final class SinglyLinkedList<E> extends AbstractSequentialList<E> impleme
      *                                   so conform to violation practice.
      */
     @Override
-    public SinglyLinkedList<E> subList(final int fromIndex, final int toIndex) {
+    public final SinglyLinkedList<E> subList(final int fromIndex, final int toIndex) {
         checkRange(fromIndex, size());
         checkRange(toIndex, size());
         final int len = toIndex - fromIndex;
         if (len < 0) {
             throw new IndexOutOfBoundsException("toIndex " + toIndex + " must be >= fromIndex " + fromIndex);
         }
-        checkForComodification();
-        final Node<E> h = findNodeBefore(head, fromIndex); // the head of the sublist
+        final Node<E> h = findNodeBefore(first, fromIndex); // the head of the sublist
         final Node<E> last = findNodeBefore(h, len);       // the last element in the sublist
         final Node<E> sTail = (tail.next != last ? new Node<E>(null, last) : tail);
-        return new SinglyLinkedList<E>(h, last.next, sTail, len, this);
+        return new SinglyLinkedList<E>(h, last, len);
     }
 
-    private SinglyLinkedList(final Node<E> head, final Node<E> end, final Node<E> tail, final int len, final SinglyLinkedList<E> parent) {
-        this.head = head;
-        this.end = end;
+    private SinglyLinkedList(final Node<E> head, final Node<E> tail, final int len) {
+        this.first = head;
         this.tail = tail;
         this.size = len;
-        this.parent = parent;
-        this.modCount = parent.modCount;
     }
 
-
-    private static <T> Node<T> findNodeBefore( Node<T> start, int index) {
-        while (index-- > 0)
+    private final <T> Node<T> findNodeBefore(Node<T> start, int index) {
+        while (index > 1) {
             start = start.next;
+            index--;
+        }
         return start;
     }
 
-    // Must be implemented because AbstractList.lastIndexOf requires proper previous() method.
+    // AbstractList.lastIndexOf requires proper previous() method.
     @Override
-    public int lastIndexOf(final Object o) {
+    public final int lastIndexOf(final Object o) {
         int i = 0, lastIndex = -1;
         for (final E e : this) {
             if (areEqual(o, e)) {
                 lastIndex = i;
             }
-            ++i;
+            i++;
         }
         return lastIndex;
     }
 
-    @Override
-    public int size() {
-        return size;
-    }
 
     boolean areEqual(final Object one, final Object two) {
         return (one == two) || (one == null ? two == null : one.equals(two));
     }
 
     void t(final boolean condition) {
-        if (!condition) throw new IllegalStateException();
+        if (!condition)
+            throw new IllegalStateException();
     }
 
     int checkRange(final int index, final int end) {
         if (index < 0 || index > end) {
-            throw new IndexOutOfBoundsException(
-                    String.format("index %d is outside of permissible range [ 0, %d] ", index, end)
-            );
+            throw new IndexOutOfBoundsException(String.format(
+                    "index %d is outside of range [ 0, %d] ", index, end));
         }
         return index;
     }
 
+    /**
+     * Unit tests - verifies the class' invariants:
+     * <p/>
+     * <li>calculated size == number of elements
+     * <li>head -> first
+     * <li>tail -> last <==> tail.next.next == end
+     * <li>head->end - starting from head one
+     * can reach end and the number of nodes between is equal to the
+     * <tt>expectedSize</tt>
+     *
+     * @param expectedSize expected size of the list to be compared with the real size of
+     *                     the list
+     * @throws IllegalStateException    if any invariant is violated
+     * @throws IllegalArgumentException if <tt>expectedSize</tt> is less than zero.
+     *
+     * TODO: fixme
+     */
+    void checkInvariants(final int expectedSize) {
+        if (expectedSize < 0)
+            throw new IllegalArgumentException();
+
+        t(size == expectedSize);
+
+        boolean empty = (first == null & isEmpty());
+        if (!empty) empty = (first.next == null & isEmpty());
+
+        //t(size == 0 ? empty : !empty);
+
+//        if (!empty) {
+//            t(tail.next != null);
+//
+//            // count the nodes between first and last
+//            int nNodes = 0;
+//            Node<E> c = first;
+//            while (tail.next != c) {
+//                ++nNodes;
+//                c = c.next;
+//                t(nNodes <= size);
+//            }
+//            t(c == null);
+//            t(nNodes == size);
+//        }
+    }
 }

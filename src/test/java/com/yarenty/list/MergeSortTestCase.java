@@ -2,7 +2,9 @@ package com.yarenty.list;
 
 import junit.framework.TestCase;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static com.yarenty.list.Common.t;
 
@@ -40,45 +42,6 @@ public class MergeSortTestCase extends TestCase {
         }
     }
 
-    public void testParallelSort() {
-        for (final SinglyLinkedList<Integer> list : allLists) {
-            final List<Integer> copy = new ArrayList<Integer>(list);
-            Collections.sort(copy);
-            t(list.parallelSort(), copy);
-        }
-    }
-
-
-    public void testSublistSort() {
-        final SinglyLinkedList<Integer> subway = someList.subList(1, 4);
-        t(subway.size() == 3);
-        subway.sort();
-        t(subway, Arrays.asList(1, 2, 4));
-        t(someList, Arrays.asList(1000, 1, 2, 4, 3));
-        //
-        final SinglyLinkedList<Integer> sub2 = someList.subList(0, 1);
-        sub2.remove(0);
-        try {
-            subway.checkInvariants(3);
-            fail();
-        } catch (ConcurrentModificationException expected) {
-        }
-    }
-
-    public void testSublistParallelSort() {
-        final SinglyLinkedList<Integer> subway = someList.subList(1, 4);
-        t(subway.size() == 3);
-        t(subway.parallelSort(), Arrays.asList(1, 2, 4));
-        t(someList, Arrays.asList(1000, 1, 2, 4, 3));
-        //
-        final SinglyLinkedList<Integer> sub2 = someList.subList(0, 1);
-        sub2.remove(0);
-        try {
-            subway.checkInvariants(3);
-            fail();
-        } catch (ConcurrentModificationException expected) {
-        }
-    }
 
     public void testNullPointer() {
         try {

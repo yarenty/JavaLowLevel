@@ -1,0 +1,8 @@
+Test message:
+Writing to a file in NIO is similar to reading from one.
+ We start by getting a channel from a FileOutputStream:
+Our next step is to create a buffer and put some data in it -- in this case, the data will be taken from an array called message which contains the ASCII bytes for the string Some bytes. 
+Our final step is to write to the buffer:
+fc.write( buffer );
+Notice that once again we did not need to tell the channel how much data we wanted towrite.
+ The buffer's internal accounting
