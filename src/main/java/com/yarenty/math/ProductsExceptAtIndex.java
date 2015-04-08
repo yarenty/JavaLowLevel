@@ -1,4 +1,4 @@
-package com.yarenty;
+package com.yarenty.math;
 
 import java.util.Arrays;
 
