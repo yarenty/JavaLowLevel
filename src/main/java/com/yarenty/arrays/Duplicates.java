@@ -41,13 +41,13 @@ public class Duplicates {
     }
 
     int mapSolution(final int[] a) {
-        final Map<Integer, Integer> map = new HashMap<Integer, Integer>();
-        for (int i = 0; i < a.length; i++) {
-            if (map.containsKey(a[i])) {
-                // map.put(array1[i], map.get(array1[i]) + 1);
-                return a[i]; //first that has double
+        final Map<Integer, Integer> map = new HashMap<>();
+        for (final int key : a) {
+            if (map.containsKey(key)) {
+                // map.put(key, map.get(key) + 1);
+                return key; //first that has double
             } else {
-                map.put(a[i], 1);
+                map.put(key, 1);
             }
         }
         return 0;
@@ -56,11 +56,11 @@ public class Duplicates {
     int sortSolution(final int[] a) {
         Arrays.sort(a);
         int prev = a[0];
-        for (int i = 1; i < a.length; i++) {
-            if (a[i] == prev) {
+        for (final int key : a) {
+            if (key == prev) {
                 return prev; //found
             } else {
-                prev = a[i];
+                prev = key;
             }
         }
         return 0;
