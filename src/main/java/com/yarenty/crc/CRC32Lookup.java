@@ -1,12 +1,13 @@
 package com.yarenty.crc;
 
 /**
- *  Using table lookup
- *  Reference: http://snippets.dzone.com/tag/crc32
+ * Using table lookup
+ * Reference: http://snippets.dzone.com/tag/crc32
+ * <p/>
  * Created by yarenty on 22/06/2016.
  * (C)2015 SkyCorp Ltd.
  */
-public class CRC32Lookup implements CRC32{
+public class CRC32Lookup implements CRC32 {
     private static int[] table = {
             0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
             0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988, 0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91,
@@ -43,20 +44,19 @@ public class CRC32Lookup implements CRC32{
     };
 
 
-        public String calculate(String input) {
+    public String calculate(String input) {
 
-
-            byte[] bytes = input.getBytes();
-            int crc = 0xffffffff;
-            for (byte b : bytes) {
-                crc = (crc >>> 8) ^ table[(crc ^ b) & 0xff];
-            }
-
-            // flip bits
-            crc = crc ^ 0xffffffff;
-
-            return Integer.toHexString(crc);
-
-
+        byte[] bytes = input.getBytes();
+        int crc = 0xffffffff;
+        for (byte b : bytes) {
+            crc = (crc >>> 8) ^ table[(crc ^ b) & 0xff];
         }
+
+        // flip bits
+        crc = crc ^ 0xffffffff;
+
+        return Integer.toHexString(crc);
+
+
+    }
 }

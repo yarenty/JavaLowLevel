@@ -5,12 +5,12 @@ package com.yarenty.crc;
  * Created by yarenty on 22/06/2016.
  * (C)2015 SkyCorp Ltd.
  */
-public class CRC32Direct implements CRC32{
+public class CRC32Direct implements CRC32 {
 
     public String calculate(String input) {
 
         byte[] bytes = input.getBytes();
-        int crc = 0xFFFFFFFF;       // initial contents of LFBSR
+        int crc = 0xFFFFFFFF;    // initial contents of LFBSR
         int poly = 0xEDB88320;   // reverse polynomial
 
         for (byte b : bytes) {
@@ -27,7 +27,6 @@ public class CRC32Direct implements CRC32{
         // flip bits
         crc = crc ^ 0xffffffff;
 
-       return Integer.toHexString(crc);
-
+        return Integer.toHexString(crc);
     }
 }
